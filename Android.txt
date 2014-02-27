@@ -1,0 +1,29 @@
+FRAGMENTS
+=========
+- Can be added via hardcoded XML (FrameLayout) or in the code
+- May be null or already in a list under FragmentManager; if null, needs to be created via fragmentManager.beginTransaction().add(int, Fragment).commit()
+- Compatibility: Need to subclass FragmentActivity, because Activity will not have fragment support
+- onAttach() -> [onCreate()] -> onCreateView() -> onActivityCreated() -> ... -> onDestroyView() -> [onDestroy()] -> onDetach
+-- The only time fragments are not destroyed - and even then, retained only for a short period of time - is when setRetainInstance(true) has been called and the host activity is being destroyed for a configuration change (typically rotation)
+- Attaching data to fragment - Must be done after fragment creation but before adding to activity:
+public class MyFragment {
+	public static MyFragment newInstance(data) {
+		Bundle args = new Bundle();
+		args.putString(KEY, string); <-- Method depends on datatype
+
+		MyFragment fragment = new MyFragment();
+		fragment.setArguments(args);
+		return fragment;
+	}
+ }
+-- Vs. intent data: intent.putExtra(KEY, anyObject)
+- Updating fragment listview: onResume() { super.onResume(); ((Adapter) getListAdapter()).notifyDataSetChanged(); }
+- startActivityForResult(intent, requestCode) // onActivityResult(requestCode, resultCode, intentWithExtras) { if (resultCode == Activity.RESULT_OK) ... }
+
+ACTIVITIES
+==========
+- 
+
+LAYOUTS
+=======
+- Attributes with "layout_" are directions to the widget's parent

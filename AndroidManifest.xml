@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="com.occuhunt.student"
+      android:versionCode="3"
+      android:versionName="1.0.2"
+      android:installLocation="auto">
+    <uses-sdk android:minSdkVersion="14" android:targetSdkVersion="17" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:label="@string/app_name"
+                 android:icon="@drawable/oh_icon"
+                 android:theme="@android:style/Theme.Holo.Light"
+                 android:allowBackup="true" >
+        <activity android:name=".MainActivity"
+                  android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="x-oauthflow-linkedin" android:host="callback" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".DropResumeActivity"
+            android:label="@string/title_activity_drop_resume"
+            android:parentActivityName=".MainActivity" >
+        </activity>
+        <activity
+            android:name=".FairActivity"
+            android:label="@string/title_activity_fair"
+            android:parentActivityName=".MainActivity" >
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Occuhunt</string>
+    <string name="title_activity_main">Welcome to Occuhunt</string>
+    
+    <string name="title_portfolio">Portfolio</string>
+    <string name="button_resume">Drop Resume</string>
+    <string name="button_login">Log In With LinkedIn</string>
+    <string name="image_resume">Resume Preview</string>
+    
+    <string name="title_activity_drop_resume">Available Companies</string>
+    <string name="drop_action_title">Drop</string>
+    
+    <string name="title_fairs">Fairs</string>
+    <string name="fair_logo">Fair Logo</string>
+    
+    <string name="title_rooms_dropdown">Rooms</string>
+    <string name="title_fair_map">Map</string>
+    <string name="title_fair_list">List</string>
+    
+    <string name="title_activity_fair">Company List</string>
+    <string name="company_logo">Company Logo</string>
+    
+    <string name="resume_drop_success">Resume Dropped</string>
+    <string name="resume_drop_subtitle">Expect to hear back soon!</string>
+    <string name="button_close">Close</string>
+    
+    <string name="title_settings">Settings</string>
+</resources>
