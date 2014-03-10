@@ -1,80 +1,72 @@
 package com.occuhunt.student;
 
 import android.app.Fragment;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import org.json.JSONObject;
+import static com.occuhunt.student.DbHelper.PREF_LINKEDIN_ID;
+import static com.occuhunt.student.DbHelper.PREF_RESUME_PATH;
 import uk.co.senab.photoview.PhotoViewAttacher;
 
 public class PortfolioFragment extends Fragment {
 
     PhotoViewAttacher mAttacher;
-    public static final String PREF_LINKEDIN_ID = "LINKEDIN_ID";
-    public static final String PREF_RESUME_PATH = "RESUME_PATH";
+    View mRootView;
     
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.portfolio_fragment, container, false);
-        updateResume(view);
+        mRootView = inflater.inflate(R.layout.portfolio_fragment, container, false);
+        updateResume();
         getActivity().setTitle(R.string.app_name);
-        return view;
+        return mRootView;
     }
     
     public void updateResume() {
-        updateResume(getView());
-    }
-    
-    private void updateResume(View rootView) {
-        String linkedinId = getLinkedinId();
+        final SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String linkedinId = sharedPref.getString(PREF_LINKEDIN_ID, null);
         
-        if (linkedinId == null) {
-            rootView.findViewById(R.id.linkedin_button).setVisibility(View.VISIBLE);
-            rootView.findViewById(R.id.resume_imageview).setVisibility(View.GONE);
-        }
-        else {
-            rootView.findViewById(R.id.linkedin_button).setVisibility(View.GONE);
-            rootView.findViewById(R.id.resume_imageview).setVisibility(View.VISIBLE);
-            
-            Drawable d = Drawable.createFromPath(getResumePath());
-            ImageView imageView = (ImageView) rootView.findViewById(R.id.resume_imageview);
-            imageView.setImageDrawable(d);
-            mAttacher = new PhotoViewAttacher(imageView);
-        }
-    }
-    
-    private String getLinkedinId() {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        return sharedPref.getString(PREF_LINKEDIN_ID, null);
-    }
-    
-    private String getResumePath() {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        String resumePath = sharedPref.getString(PREF_RESUME_PATH, null);
-        
-        if (resumePath == null) {
-            String linkedinId = getLinkedinId();
-            DbHelper dbHelper = new DbHelper(getActivity());
-            JSONObject userData = dbHelper.getJson("http://occuhunt.com/api/v1/users/?linkedin_uid=" + linkedinId);
-            
-            try {
-                JSONObject userArray = userData.getJSONObject("response").getJSONArray("users").getJSONObject(0);
-                String resumeUrl = userArray.getString("resume");
-                resumePath = dbHelper.new DownloadImageTask().execute(new String[] {resumeUrl}).get();
-            } catch (Exception e) {
-                return null;
+        if (linkedinId != null) { // User is logged in
+            String resumePath = sharedPref.getString(PREF_RESUME_PATH, null);
+            if (resumePath == null) {
+                
+                new FetchUserTask(getActivity()) {
+                    @Override
+                    protected void onPostExecute(String jsonString) {
+                        super.onPostExecute(jsonString);
+                        try {
+                            String resumeUrl = getUser().getString("resume");
+                            String resumePath = new DownloadFileTask(getActivity()).execute(new String[] {resumeUrl}).get();
+                            sharedPref.edit().putString(PREF_RESUME_PATH, resumePath).commit();
+                            showResume(resumePath);
+                        } catch (Exception e) {
+                            Log.e("getResumePath()", e.toString());
+                        }
+                    }
+                }.execute(linkedinId);
+                
             }
-            sharedPref.edit().putString(PREF_RESUME_PATH, resumePath).commit();
+            else {
+                showResume(resumePath);
+            }
         }
         
-        return resumePath;
     }
     
+    private void showResume(String resumePath) {
+        mRootView.findViewById(R.id.linkedin_button).setVisibility(View.GONE);
+        mRootView.findViewById(R.id.resume_imageview).setVisibility(View.VISIBLE);
+
+        Drawable d = Drawable.createFromPath(resumePath);
+        ImageView imageView = (ImageView) mRootView.findViewById(R.id.resume_imageview);
+        imageView.setImageDrawable(d);
+        mAttacher = new PhotoViewAttacher(imageView);
+    }
+ 
 }

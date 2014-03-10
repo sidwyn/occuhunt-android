@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Occuhunt</string>
-    <string name="title_activity_main">Welcome to Occuhunt</string>
+    <string name="launcher_error_msg">Sorry, Occuhunt requires an internet connection. Please turn it on and restart the app.</string>
     
     <string name="title_portfolio">Portfolio</string>
     <string name="button_resume">Drop Resume</string>

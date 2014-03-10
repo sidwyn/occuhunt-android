@@ -14,26 +14,29 @@ import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
 import android.widget.TextView;
-import static com.occuhunt.student.FairActivity.EXTRA_FAIR_ID;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class FairMapFragment extends Fragment {
 
+    View mRootView;
+    GridLayout mGridLayout;
+    long mFairId;
+    
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        final View rootView = inflater.inflate(R.layout.fair_map, container, false);
+        mRootView = inflater.inflate(R.layout.fair_map, container, false);
+        mGridLayout = (GridLayout) mRootView.findViewById(R.id.fair_gridlayout);
         
-        long fairId = getActivity().getIntent().getExtras().getLong(FairActivity.EXTRA_FAIR_ID);
-        Cursor roomsCursor = new DbHelper(getActivity()).queryRooms(fairId);
+        mFairId = getActivity().getIntent().getExtras().getLong(FairActivity.EXTRA_FAIR_ID);
+        Cursor roomsCursor = new DbHelper(getActivity()).queryRooms(mFairId);
         
         roomsCursor.moveToFirst();
         long roomId = roomsCursor.getLong(roomsCursor.getColumnIndex(DbContract.RoomsTable._ID));
-        updateMap(roomId, rootView);
+        updateMap(roomId);
         
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
             getActivity(),
@@ -45,47 +48,56 @@ public class FairMapFragment extends Fragment {
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         
-        Spinner roomsSpinner = (Spinner) rootView.findViewById(R.id.rooms_spinner);
+        Spinner roomsSpinner = (Spinner) mRootView.findViewById(R.id.rooms_spinner);
         roomsSpinner.setAdapter(adapter);
         roomsSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long roomId) {
-                updateMap(roomId, rootView);
+                updateMap(roomId);
             }
             
             @Override
             public void onNothingSelected(AdapterView parent) { }
         });
         
-        return rootView;
+        return mRootView;
     }
     
-    public void updateMap(long roomId) {
-        updateMap(roomId, getView());
-    }
-    
-    private void updateMap(final long roomId, View rootView) {
-        GridLayout gridLayout = (GridLayout) rootView.findViewById(R.id.fair_gridlayout);
-        gridLayout.removeAllViews();
+    private void updateMap(final long roomId) {
         
-        final long fairId = getActivity().getIntent().getExtras().getLong(FairActivity.EXTRA_FAIR_ID);
+        new FetchJSONTask(getActivity()) {
+            @Override
+            protected void onPostExecute(String jsonString) {
+                super.onPostExecute(jsonString);
+                try {
+                    updateLayout(getJSON());
+                } catch (JSONNotFoundException e) {
+                    TextView errorText = new TextView(getActivity());
+                    errorText.setText("Sorry, map data is not available for this fair.");
+                    mGridLayout.addView(errorText);
+                    Log.e("updateMap()", e.toString());
+                }
+            }
+        }.execute("http://occuhunt.com/static/faircoords/" + mFairId + "_" + roomId + ".json");
+        
+    }
+    
+    private void updateLayout(JSONObject mapData) {
+        mGridLayout.removeAllViews();
+        
         int baseDp = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 75, getResources().getDisplayMetrics());
-        
-        DbHelper dbHelper = new DbHelper(getActivity());
-        String jsonUrl = "http://occuhunt.com/static/faircoords/" + fairId + "_" + roomId + ".json";
-        JSONObject mapData = dbHelper.getJson(jsonUrl);
         
         View.OnClickListener listener = new View.OnClickListener() {
             public void onClick(View companyTile) {
                 long companyId = Long.valueOf((String) companyTile.getTag());
                 FragmentManager fm = getFragmentManager();
-                CompanyFragment dialog = CompanyFragment.newInstance(companyId, fairId);
+                CompanyFragment dialog = CompanyFragment.newInstance(companyId, mFairId);
                 dialog.show(fm, CompanyFragment.DIALOG_COMPANY);
             }
         };
         
         try {
-            gridLayout.setColumnCount(mapData.getInt("cols"));
+            mGridLayout.setColumnCount(mapData.getInt("cols"));
             JSONArray cellsArray = mapData.getJSONArray("coys");
             
             for (int i=0; i < cellsArray.length(); i++) {
@@ -102,10 +114,11 @@ public class FairMapFragment extends Fragment {
                     companyTile.setWidth(baseDp);
                     companyTile.setHeight(baseDp);
                     companyTile.setTextSize(11);
+                    companyTile.setMaxLines(4);
                     companyTile.setOnClickListener(listener);
                     
                     companyTile.setLayoutParams(params);
-                    gridLayout.addView(companyTile);
+                    mGridLayout.addView(companyTile);
                 }
                 else if (cell.getInt("blank_column") == 1 || cell.getInt("blank_row") == 1) {
                     TextView blankCell = new TextView(getActivity());
@@ -114,7 +127,7 @@ public class FairMapFragment extends Fragment {
                     if (cell.getInt("blank_row") == 1)    blankCell.setHeight(baseDp * 3/5);
                     
                     blankCell.setLayoutParams(params);
-                    gridLayout.addView(blankCell);
+                    mGridLayout.addView(blankCell);
                 }
             }
         } catch (JSONException e) {

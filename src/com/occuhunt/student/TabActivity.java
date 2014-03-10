@@ -12,16 +12,11 @@ public abstract class TabActivity extends Activity {
     protected abstract TabData[] tabDataArray();
     
     private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
-    protected ProgressDialog mDialog;
     
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        mDialog = new ProgressDialog(this);
-        mDialog.setMessage("Loading...");
-        mDialog.setCancelable(false);
         
         // Set up the action bar to show tabs.
         ActionBar actionBar = getActionBar();

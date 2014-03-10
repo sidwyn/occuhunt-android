@@ -1,12 +1,10 @@
 package com.occuhunt.student;
 
 import android.app.FragmentManager;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
@@ -20,7 +18,7 @@ import com.google.code.linkedinapi.client.oauth.LinkedInRequestToken;
 import com.google.code.linkedinapi.schema.Person;
 import java.util.EnumSet;
 import java.util.concurrent.Future;
-import org.json.JSONObject;
+import org.json.JSONException;
 
 public class MainActivity extends TabActivity
 {
@@ -29,12 +27,6 @@ public class MainActivity extends TabActivity
     private static final LinkedInOAuthService mOAuthService = 
             LinkedInOAuthServiceFactory.getInstance().createLinkedInOAuthService(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET);
     private static LinkedInRequestToken mLiToken;
-    
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        new DbHelper(this).getReadableDatabase(); // Initialize DB
-    }
     
     protected TabData[] tabDataArray() {
         return new TabData[] {
@@ -57,7 +49,6 @@ public class MainActivity extends TabActivity
         super.onResume();
         
         if (getIntent().getData() != null) { // User just returned to Activity from Linkedin login
-            mDialog.show();
             new LinkedinAuthTask().execute();
         }
     }
@@ -85,42 +76,44 @@ public class MainActivity extends TabActivity
         
         @Override
         protected void onPostExecute(LinkedInAccessToken accessToken) {
+            final SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+            
             final LinkedInApiClientFactory factory = LinkedInApiClientFactory.newInstance(Constants.CONSUMER_KEY, Constants.CONSUMER_SECRET);
 
             AsyncLinkedInApiClient client = factory.createAsyncLinkedInApiClient(accessToken);
             Future<Person> asyncResult = client.getProfileForCurrentUser(EnumSet.of(ProfileField.ID));
-            String linkedinId = null;
+            String linkedinId;
             
             try {
                 Person profile = asyncResult.get();
                 linkedinId = profile.getId();
             } catch (Exception e) {
                 Log.e("LinkedinAuthTask", e.toString());
+                return;
             }
             
-            long userId = getUserId(linkedinId);
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
             sharedPref.edit().clear()
-                    .putString(PortfolioFragment.PREF_LINKEDIN_ID, linkedinId)
-                    .putLong(PREF_USER_ID, userId)
-                    .commit();
+                      .putString(DbHelper.PREF_LINKEDIN_ID, linkedinId).commit();
             
-            // Re-instantiate the Portfolio fragment
-            FragmentManager fm = getFragmentManager();
-            PortfolioFragment fragment = (PortfolioFragment) fm.findFragmentByTag(getString(R.string.title_portfolio));
-            fragment.updateResume();
+            new FetchUserTask(MainActivity.this) {
+                @Override
+                protected void onPostExecute(String jsonString) {
+                    super.onPostExecute(jsonString);
+                    try {
+                        long userId = getUser().getLong("id");
+                        sharedPref.edit().putLong(PREF_USER_ID, userId).commit();
+                        
+                        // Re-instantiate the Portfolio fragment
+                        FragmentManager fm = getFragmentManager();
+                        PortfolioFragment fragment = (PortfolioFragment) fm.findFragmentByTag(getString(R.string.title_portfolio));
+                        fragment.updateResume();
+                    } catch (JSONException e) {
+                        Log.e("FetchUserTask", e.toString());
+                    }
+                }
+            }.execute(linkedinId);
             
-            mDialog.dismiss();
         }
     }
-    
-    private long getUserId(String linkedinId) {
-        JSONObject userJson = new DbHelper(this).getJson("http://occuhunt.com/api/v1/users/?linkedin_uid=" + linkedinId);
-        try {
-            return userJson.getJSONObject("response").getJSONArray("users").getJSONObject(0).getLong("id");
-        } catch (Exception e) {
-            Log.e("getUserId()", e.toString());
-            return 0;
-        }
-    }
+
 }

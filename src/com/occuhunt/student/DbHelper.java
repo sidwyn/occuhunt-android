@@ -1,70 +1,43 @@
 package com.occuhunt.student;
 
-import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import static android.provider.BaseColumns._ID;
 import android.util.Log;
-import android.widget.ImageView;
 import com.occuhunt.student.DbContract.*;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 public class DbHelper extends SQLiteOpenHelper
 {    
     private final Context mContext;
-    private ProgressDialog mDialog;
+    
+    public static final String PREF_LINKEDIN_ID = "LINKEDIN_ID";
+    public static final String PREF_RESUME_PATH = "RESUME_PATH";
+    public static final String PREF_FAIRS_UPDATED = "FAIRS_UPDATED";
     
     public DbHelper(Context context) {
         super(context, DbContract.DATABASE_NAME, null, DbContract.DATABASE_VERSION);
         this.mContext = context;
-        
-        mDialog = new ProgressDialog(context);
-        mDialog.setMessage("Loading...");
-        mDialog.setCancelable(false);
     }
 
     // Method is called during creation of the database
     @Override
-    public void onCreate(SQLiteDatabase db) {
-        mDialog.show();
+    public void onCreate(final SQLiteDatabase db) {
         db.execSQL(FairsTable.CREATE_TABLE);
         db.execSQL(RoomsTable.CREATE_TABLE);
         db.execSQL(CompaniesTable.CREATE_TABLE);
         db.execSQL(FairsCompaniesTable.CREATE_TABLE);
         
-        try {
-            JSONArray fairsData = getJson("http://occuhunt.com/api/v1/fairs/").getJSONArray("objects");
-            insertFairs(fairsData, db);
-            
-            JSONArray companiesData = getJson("http://occuhunt.com/api/v1/companies/").getJSONObject("response").getJSONArray("companies");
-            insertCompanies(companiesData, db);
-        } catch (JSONException e) {
-        } finally {
-            mDialog.dismiss();
-        }
+        fetchCompanies();
     }
 
     // Method is called during an upgrade of the database
@@ -156,7 +129,7 @@ public class DbHelper extends SQLiteOpenHelper
         );
     }
     
-    public Cursor queryCompanies(long fairId) {
+    public Cursor queryCompanies(final long fairId) {
         String query = FairsCompaniesTable.SELECT_AND_JOIN_COMPANIES +
                        " WHERE " + FairsCompaniesTable.COLUMN_NAME_FAIR_ID + " = ?" +
                        " ORDER BY " + CompaniesTable.COLUMN_NAME_COMPANY_NAME;
@@ -166,22 +139,28 @@ public class DbHelper extends SQLiteOpenHelper
             return companiesCursor;
         }
         else { // No company data available for this fair yet!
-            mDialog.show();
             Cursor roomsCursor = queryRooms(fairId);
             int roomIdColumn = roomsCursor.getColumnIndex(RoomsTable._ID);
             
             // TODO: Optimize this loop!
             while (roomsCursor.moveToNext()) {
-                try {
-                    long roomId = roomsCursor.getLong(roomIdColumn);
-                    String jsonUrl = "http://occuhunt.com/static/faircoords/" +
-                            fairId + "_" + roomId + ".json";
-                    insertCompaniesAtFair(getJson(jsonUrl).getJSONArray("coys"), fairId, roomId, getWritableDatabase());
-                } catch (JSONException e) {
-                    return null;
-                }
+                
+                final long roomId = roomsCursor.getLong(roomIdColumn);
+                
+                new FetchJSONTask(mContext) {
+                    @Override
+                    protected void onPostExecute(String jsonString) {
+                        super.onPostExecute(jsonString);
+                        try {
+                            insertCompaniesAtFair(getJSON().getJSONArray("coys"), fairId, roomId);
+                        } catch (Exception e) {
+                            Log.e("queryCompanies()", e.toString());
+                        }
+                    }
+                }.execute("http://occuhunt.com/static/faircoords/" + fairId + "_" + roomId + ".json");
+                
             }
-            mDialog.dismiss();
+            
             return getReadableDatabase().rawQuery(query, new String[] { String.valueOf(fairId) } );
         }
     }
@@ -226,24 +205,29 @@ public class DbHelper extends SQLiteOpenHelper
         }
     }
     
-    private void insertFairs(JSONArray fairsData, SQLiteDatabase db) {
+    protected void insertFairs(JSONArray fairsData) {
+        SQLiteDatabase db = getWritableDatabase();
+        
         for (int i=0; i < fairsData.length(); i++) {
             try {
                 JSONObject fairData = fairsData.getJSONObject(i);
                 
-                // TODO: Optimize DownloadImageTask() to download all images at one go
-                String logoPath = new DownloadImageTask().execute(fairData.getString("logo")).get();
+                // TODO: Optimize DownloadFileTask() to download all images at one go
+                String logoPath = new DownloadFileTask(mContext).execute(fairData.getString(FairsTable.COLUMN_NAME_LOGO)).get();
+                long fairId = fairData.getLong(DbContract.REMOTE_ID_COLUMN);
                 
-                ContentValues fairEntry = new ContentValues();
-                fairEntry.put(_ID, fairData.getString(DbContract.REMOTE_ID_COLUMN));
-                fairEntry.put(FairsTable.COLUMN_NAME_FAIR_NAME, fairData.getString(FairsTable.COLUMN_NAME_FAIR_NAME));
-                fairEntry.put(FairsTable.COLUMN_NAME_LOGO, logoPath);
-                fairEntry.put(FairsTable.COLUMN_NAME_VENUE, fairData.getString(FairsTable.COLUMN_NAME_VENUE));
-                fairEntry.put(FairsTable.COLUMN_NAME_TIME_START, fairData.getString(FairsTable.COLUMN_NAME_TIME_START));
-                fairEntry.put(FairsTable.COLUMN_NAME_TIME_END, fairData.getString(FairsTable.COLUMN_NAME_TIME_END));
-                long fairId = db.insert(FairsTable.TABLE_NAME, null, fairEntry);
-                
-                insertRooms(fairData.getJSONArray("rooms"), fairId, db);
+                if (queryFair(fairId).getCount() == 0) {
+                    ContentValues fairEntry = new ContentValues();
+                    fairEntry.put(_ID, fairId);
+                    fairEntry.put(FairsTable.COLUMN_NAME_FAIR_NAME, fairData.getString(FairsTable.COLUMN_NAME_FAIR_NAME));
+                    fairEntry.put(FairsTable.COLUMN_NAME_LOGO, logoPath);
+                    fairEntry.put(FairsTable.COLUMN_NAME_VENUE, fairData.getString(FairsTable.COLUMN_NAME_VENUE));
+                    fairEntry.put(FairsTable.COLUMN_NAME_TIME_START, fairData.getString(FairsTable.COLUMN_NAME_TIME_START));
+                    fairEntry.put(FairsTable.COLUMN_NAME_TIME_END, fairData.getString(FairsTable.COLUMN_NAME_TIME_END));
+                    db.insert(FairsTable.TABLE_NAME, null, fairEntry);
+
+                    insertRooms(fairData.getJSONArray("rooms"), fairId, db);
+                }
             } catch (Exception e) {
                 // Meh.
             }
@@ -267,7 +251,9 @@ public class DbHelper extends SQLiteOpenHelper
         }
     }
     
-    private void insertCompaniesAtFair(JSONArray companiesData, long fairId, long roomId, SQLiteDatabase db) {
+    private void insertCompaniesAtFair(JSONArray companiesData, long fairId, long roomId) {
+        SQLiteDatabase db = getWritableDatabase();
+        
         for (int i=0; i < companiesData.length(); i++) {
             try {
                 JSONObject companyData = companiesData.getJSONObject(i);
@@ -286,7 +272,24 @@ public class DbHelper extends SQLiteOpenHelper
         }
     }
     
-    private void insertCompanies(JSONArray companiesData, SQLiteDatabase db) {
+    public void fetchCompanies() {
+        new FetchJSONTask(mContext) {
+            @Override
+            protected void onPostExecute(String jsonString) {
+                try {
+                    super.onPostExecute(jsonString);
+                    JSONArray companiesData = getJSON().getJSONObject("response").getJSONArray("companies");
+                    insertCompanies(companiesData);
+                } catch (Exception e) {
+                    Log.e("onCreate()", e.toString());
+                }
+            }
+        }.execute(Constants.API_URL + "/companies/");
+    }
+    
+    private void insertCompanies(JSONArray companiesData) {
+        SQLiteDatabase db = getWritableDatabase();
+        
         for (int i=0; i < companiesData.length(); i++) { // TODO: Change this to insert all companies, not just the first 30
             try {
                 JSONObject companyData = companiesData.getJSONObject(i);
@@ -303,100 +306,21 @@ public class DbHelper extends SQLiteOpenHelper
         }
     }
     
-    private long getUserId(String linkedinId) {
-        JSONObject userJson = getJson("http://occuhunt.com/api/v1/users/?linkedin_uid=" + linkedinId);
-        try {
-            return userJson.getJSONObject("response").getJSONArray("users").getJSONObject(0).getLong("id");
-        } catch (Exception e) {
-            Log.e("getUserId()", e.toString());
-            return 0;
-        }
-    }
+    // -------------------------------------------------------------------------
     
-    public JSONObject getJson(String url) {
+    public boolean isNetAvailable() {
         try {
-            String jsonString = new FetchJsonTask().execute(url).get();
-            return new JSONObject(jsonString);
+            ConnectivityManager connectivityManager = (ConnectivityManager)
+                    mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+            NetworkInfo mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+            if (wifiInfo.isConnected() || mobileInfo.isConnected()) {
+                return true;
+            }
         }
         catch (Exception e) {
-            return null;
+           e.printStackTrace();
         }
-    }
-    
-    private class FetchJsonTask extends AsyncTask<String, Void, String> {
-        
-        @Override
-        protected void onPreExecute() {
-            mDialog.show();
-        }
-        
-        @Override
-        protected String doInBackground(String... url) {
-            HttpClient httpclient = new DefaultHttpClient(); // for port 80 requests!
-            HttpGet httpget = new HttpGet(url[0]);
-            InputStream is;
-            
-            try {
-                HttpEntity httpentity = httpclient.execute(httpget).getEntity();
-                is = httpentity.getContent();
-            } catch (IOException e) {
-                Log.e("FetchJson", e.toString());
-                return null;
-            }
-            
-            // Read response to string
-            try {	    	
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is,"utf-8"), 8);
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line + "\n");
-                }
-                is.close();
-                return sb.toString();           
-            } catch (Exception e) {
-                Log.e("getJson()", e.toString());
-                return null;
-            }
-        }
-        
-        @Override
-        protected void onPostExecute(String jsonResult) {
-            mDialog.dismiss();
-        }
-    }
-    
-    public class DownloadImageTask extends AsyncTask<String, Void, String> {
-        
-        @Override
-        protected String doInBackground(String... url) {
-            String fullPath;
-
-            try {
-                InputStream input = new URL(url[0]).openStream();
-                String filename = url[0].substring(url[0].lastIndexOf('/') + 1);
-
-                File filesDir = mContext.getFilesDir();
-                fullPath = filesDir.toString() + "/" + filename;
-                OutputStream output = new FileOutputStream(fullPath);
-
-                try {
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = 0;
-
-                    while ((bytesRead = input.read(buffer, 0, buffer.length)) >= 0) {
-                        output.write(buffer, 0, bytesRead);
-                    }
-                } finally {
-                    output.close();
-                    input.close();
-                }
-            } catch (Exception e) {
-                Log.e("DownloadImageTask", e.toString());
-                return null;
-            }
-
-            return fullPath;
-        }
+        return false;
     }
 }
