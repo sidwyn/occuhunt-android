@@ -65,7 +65,7 @@ public class CompanyFragment extends DialogFragment {
         
         return new AlertDialog.Builder(getActivity())
                 .setView(view)
-                .setPositiveButton(R.string.button_resume, new DialogInterface.OnClickListener() {
+                .setPositiveButton(R.string.title_drop_resume, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int buttonId) {
                         int statusCode = dropResume(getActivity(), mCompanyId, mFairId);
                         if (statusCode == 201) showSuccessDialog();
