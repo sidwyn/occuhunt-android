@@ -48,7 +48,7 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
             HttpEntity httpentity = httpclient.execute(httpget).getEntity();
             is = httpentity.getContent();
         } catch (IOException e) {
-            Log.e("FetchJson", e.toString());
+            Log.e("FetchJSONTask", e.toString());
             return null;
         }
 
@@ -62,8 +62,8 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
             }
             is.close();
             return sb.toString();           
-        } catch (Exception e) {
-            Log.e("getJson()", e.toString());
+        } catch (IOException e) {
+            Log.e("FetchJSONTask", e.toString());
             return null;
         }
     }
@@ -73,7 +73,7 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
         mDialog.dismiss();
         
         if (jsonString == null) {
-            Toast.makeText(mContext, "Sorry, the requested data is not available right now.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mContext, R.string.download_error_msg, Toast.LENGTH_SHORT).show();
         }
         else {
             try {

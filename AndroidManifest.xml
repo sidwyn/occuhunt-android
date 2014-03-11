@@ -29,7 +29,7 @@
         </activity>
         <activity
             android:name=".DropResumeActivity"
-            android:label="@string/title_activity_drop_resume"
+            android:label="@string/title_drop_resume"
             android:parentActivityName=".MainActivity" >
         </activity>
         <activity

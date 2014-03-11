@@ -91,15 +91,17 @@ public class DbHelper extends SQLiteOpenHelper
         // return new FairsCursor(c).createFair();
     }
     
-    public Cursor queryNearestFair() {
+    public Cursor queryNextFair() {
+        String secondsTillEnd = "strftime('%s', " + FairsTable.COLUMN_NAME_TIME_END + " ) - strftime('%s', 'now')";
+        
         return getReadableDatabase().query(
             FairsTable.TABLE_NAME,
             null,
+            secondsTillEnd + " > -86400", // Valid till 1 day after event
             null,
             null,
             null,
-            null,
-            "ABS( strftime('%s', 'now') - strftime('%s', " + FairsTable.COLUMN_NAME_TIME_START + " ) )",
+            secondsTillEnd,
             "1"
         );
     }
@@ -135,34 +137,8 @@ public class DbHelper extends SQLiteOpenHelper
                        " ORDER BY " + CompaniesTable.COLUMN_NAME_COMPANY_NAME;
         Cursor companiesCursor = getReadableDatabase().rawQuery(query,
                 new String[] { String.valueOf(fairId) } );
-        if (companiesCursor.moveToFirst()) {
-            return companiesCursor;
-        }
-        else { // No company data available for this fair yet!
-            Cursor roomsCursor = queryRooms(fairId);
-            int roomIdColumn = roomsCursor.getColumnIndex(RoomsTable._ID);
-            
-            // TODO: Optimize this loop!
-            while (roomsCursor.moveToNext()) {
-                
-                final long roomId = roomsCursor.getLong(roomIdColumn);
-                
-                new FetchJSONTask(mContext) {
-                    @Override
-                    protected void onPostExecute(String jsonString) {
-                        super.onPostExecute(jsonString);
-                        try {
-                            insertCompaniesAtFair(getJSON().getJSONArray("coys"), fairId, roomId);
-                        } catch (Exception e) {
-                            Log.e("queryCompanies()", e.toString());
-                        }
-                    }
-                }.execute("http://occuhunt.com/static/faircoords/" + fairId + "_" + roomId + ".json");
-                
-            }
-            
-            return getReadableDatabase().rawQuery(query, new String[] { String.valueOf(fairId) } );
-        }
+        
+        return companiesCursor;
     }
     
     public Cursor queryRooms(long fairId) {
@@ -251,7 +227,7 @@ public class DbHelper extends SQLiteOpenHelper
         }
     }
     
-    private void insertCompaniesAtFair(JSONArray companiesData, long fairId, long roomId) {
+    protected void insertCompaniesAtFair(JSONArray companiesData, long fairId, long roomId) {
         SQLiteDatabase db = getWritableDatabase();
         
         for (int i=0; i < companiesData.length(); i++) {
