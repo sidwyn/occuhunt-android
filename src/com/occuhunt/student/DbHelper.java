@@ -119,7 +119,7 @@ public class DbHelper extends SQLiteOpenHelper
         );
     }
     
-    public Cursor queryCompanies() {
+    public Cursor queryAllCompanies() {
         return getReadableDatabase().query(
             CompaniesTable.TABLE_NAME,
             null,
@@ -243,7 +243,7 @@ public class DbHelper extends SQLiteOpenHelper
                     db.insertWithOnConflict(FairsCompaniesTable.TABLE_NAME, null, fairCompanyEntry, SQLiteDatabase.CONFLICT_REPLACE);
                 }
             } catch (Exception e) {
-                // Meh.
+                Log.e("insertCompaniesAtFair", e.toString());
             }
         }
     }

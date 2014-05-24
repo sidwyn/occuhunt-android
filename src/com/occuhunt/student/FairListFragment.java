@@ -1,9 +1,11 @@
 package com.occuhunt.student;
 
+import android.app.Activity;
 import android.app.FragmentManager;
 import android.app.ListFragment;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
@@ -13,20 +15,56 @@ public class FairListFragment extends ListFragment {
     
     public static final String  EXTRA_FAIR_ID = "com.occuhunt.student.fair_id";
     private long mFairId;
+    private Activity mContext;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        DbHelper dbHelper = new DbHelper(getActivity());
-        mFairId = getActivity().getIntent().getExtras().getLong(EXTRA_FAIR_ID);
+        mContext = getActivity();
+        final DbHelper dbHelper = new DbHelper(mContext);
+        mFairId = mContext.getIntent().getExtras().getLong(EXTRA_FAIR_ID);
         
-        Cursor cursor = dbHelper.queryCompanies(mFairId);
-        
+        Cursor companiesCursor = dbHelper.queryCompanies(mFairId);
+        if (companiesCursor.getCount() == 0) { // Company data not downloaded for this fair yet
+            Cursor roomsCursor = dbHelper.queryRooms(mFairId);
+            int roomIdColumn = roomsCursor.getColumnIndex(DbContract.RoomsTable._ID);
+            
+            // TODO: Optimize this loop!
+            while (roomsCursor.moveToNext()) {
+                final long roomId = roomsCursor.getLong(roomIdColumn);
+                final boolean isLastRoom = roomsCursor.isLast();
+                
+                new FetchJSONTask(mContext) {
+                    @Override
+                    protected void onPostExecute(String jsonString) {
+                        super.onPostExecute(jsonString);
+                        try {
+                            dbHelper.insertCompaniesAtFair(getJSON().getJSONArray("coys"), mFairId, roomId);
+                        } catch (Exception e) {
+                            Log.e("queryCompanies()", e.toString());
+                            return;
+                        }
+                        
+                        // Company data should have been inserted, let's try again
+                        if (isLastRoom) {
+                            showCompaniesList(dbHelper.queryCompanies(mFairId));
+                        }
+                    }
+                }.execute("http://occuhunt.com/static/faircoords/" + mFairId + "_" + roomId + ".json");
+                
+            }
+        }
+        else {
+            showCompaniesList(companiesCursor);
+        }
+    }
+    
+    private void showCompaniesList(Cursor companiesCursor) {
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
-            getActivity(),
+            mContext,
             R.layout.single_textview,
-            cursor,
+            companiesCursor,
             new String[] { CompaniesTable.COLUMN_NAME_COMPANY_NAME },
             new int[] { R.id.single_textview },
             0

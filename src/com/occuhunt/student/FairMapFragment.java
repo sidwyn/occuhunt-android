@@ -34,10 +34,6 @@ public class FairMapFragment extends Fragment {
         mFairId = getActivity().getIntent().getExtras().getLong(FairActivity.EXTRA_FAIR_ID);
         Cursor roomsCursor = new DbHelper(getActivity()).queryRooms(mFairId);
         
-        roomsCursor.moveToFirst();
-        long roomId = roomsCursor.getLong(roomsCursor.getColumnIndex(DbContract.RoomsTable._ID));
-        updateMap(roomId);
-        
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(
             getActivity(),
             android.R.layout.simple_spinner_item,

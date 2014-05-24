@@ -54,8 +54,8 @@ public class DropResumeActivity extends ListActivity {
             
             // TODO: Optimize this loop!
             while (roomsCursor.moveToNext()) {
-                
                 final long roomId = roomsCursor.getLong(roomIdColumn);
+                final boolean isLastRoom = roomsCursor.isLast();
                 
                 new FetchJSONTask(DropResumeActivity.this) {
                     @Override
@@ -64,11 +64,15 @@ public class DropResumeActivity extends ListActivity {
                         try {
                             mDbHelper.insertCompaniesAtFair(getJSON().getJSONArray("coys"), mFairId, roomId);
                         } catch (Exception e) {
-                            Log.e("queryCompanies()", e.toString());
+                            Toast.makeText(mContext, R.string.no_upcoming_fairs, Toast.LENGTH_SHORT).show();
+                            finish();
                             return;
                         }
+                        
                         // Company data should have been inserted, let's try again
-                        showCompanies();
+                        if (isLastRoom) {
+                            showCompanies();
+                        }
                     }
                 }.execute("http://occuhunt.com/static/faircoords/" + mFairId + "_" + roomId + ".json");
                 

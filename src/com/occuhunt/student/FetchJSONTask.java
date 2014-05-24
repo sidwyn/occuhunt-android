@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -20,7 +22,7 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
     
     private String mJSONUrl;
     private JSONObject mJSONResult;
-    private final Context mContext;
+    protected final Context mContext;
     private final ProgressDialog mDialog;
     
     public FetchJSONTask(Context context) {
@@ -32,7 +34,10 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
     
     @Override
     protected void onPreExecute() {
-        if (mContext instanceof LauncherActivity == false) {
+        if ( ! new DbHelper(mContext).isNetAvailable()) {
+            Toast.makeText(mContext, R.string.no_internet_error_msg, Toast.LENGTH_SHORT).show();
+        }
+        else if (mContext instanceof LauncherActivity == false) {
             mDialog.show();
         }
     }
@@ -45,7 +50,11 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
         mJSONUrl = url[0];
         
         try {
-            HttpEntity httpentity = httpclient.execute(httpget).getEntity();
+            HttpResponse response = httpclient.execute(httpget);
+            if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+                return null;
+            }
+            HttpEntity httpentity = response.getEntity();
             is = httpentity.getContent();
         } catch (IOException e) {
             Log.e("FetchJSONTask", e.toString());
@@ -72,10 +81,8 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
     protected void onPostExecute(String jsonString) {
         mDialog.dismiss();
         
-        if (jsonString == null) {
-            Toast.makeText(mContext, R.string.download_error_msg, Toast.LENGTH_SHORT).show();
-        }
-        else {
+        if (jsonString != null) {
+            // Toast.makeText(mContext, R.string.download_error_msg, Toast.LENGTH_SHORT).show();
             try {
                 mJSONResult = new JSONObject(jsonString);
             } catch (JSONException e) {
