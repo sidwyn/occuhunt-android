@@ -4,7 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.view.View;
 import android.widget.ListView;
-import android.widget.SimpleCursorAdapter;
+import android.support.v4.widget.SimpleCursorAdapter;
 
 public class FairAdapter extends SimpleCursorAdapter
 {

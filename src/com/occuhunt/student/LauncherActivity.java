@@ -1,20 +1,20 @@
 package com.occuhunt.student;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
 import org.json.JSONArray;
 
-public class LauncherActivity extends Activity {
+public class LauncherActivity extends ActionBarActivity {
 
     private final DbHelper mDbHelper = new DbHelper(this);
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getActionBar().hide();
+        getSupportActionBar().hide();
         setContentView(R.layout.launcher_activity);
 
         if (! mDbHelper.isNetAvailable()) {

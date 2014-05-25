@@ -4,12 +4,12 @@
       android:versionCode="5"
       android:versionName="1.0.3.1"
       android:installLocation="auto">
-    <uses-sdk android:minSdkVersion="14" android:targetSdkVersion="17" />
+    <uses-sdk android:minSdkVersion="4" android:targetSdkVersion="17" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application android:label="@string/app_name"
                  android:icon="@drawable/oh_icon"
-                 android:theme="@android:style/Theme.Holo.Light"
+                 android:theme="@style/Theme.AppCompat.Light"
                  android:allowBackup="true" >
         <activity android:name=".LauncherActivity"
                   android:label="@string/app_name">
@@ -31,11 +31,18 @@
             android:name=".DropResumeActivity"
             android:label="@string/title_drop_resume"
             android:parentActivityName=".MainActivity" >
+            <!-- Parent activity meta-data to support 4.0 and lower -->
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity" />
         </activity>
         <activity
             android:name=".FairActivity"
             android:label="@string/title_activity_fair"
             android:parentActivityName=".MainActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity" />
         </activity>
     </application>
 </manifest>

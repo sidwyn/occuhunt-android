@@ -1,13 +1,13 @@
 package com.occuhunt.student;
 
-import android.app.ActionBar;
 import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentTransaction;
-import android.app.ProgressDialog;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.os.Bundle;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
 
-public abstract class TabActivity extends Activity {
+public abstract class TabActivity extends ActionBarActivity {
 
     protected abstract TabData[] tabDataArray();
     
@@ -19,7 +19,7 @@ public abstract class TabActivity extends Activity {
         super.onCreate(savedInstanceState);
         
         // Set up the action bar to show tabs.
-        ActionBar actionBar = getActionBar();
+        ActionBar actionBar = getSupportActionBar();
         actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 
         // for each of the sections in the app, add a tab to the action bar.
@@ -31,21 +31,21 @@ public abstract class TabActivity extends Activity {
         }
         
         // Hide the Occuhunt icon
-        // getActionBar().setDisplayShowHomeEnabled(false);
+        // getSupportActionBar().setDisplayShowHomeEnabled(false);
     }
     
     @Override
     public void onSaveInstanceState(Bundle outState) {
       // Serialize the current tab position.
       outState.putInt(STATE_SELECTED_NAVIGATION_ITEM,
-                      getActionBar().getSelectedNavigationIndex());
+                      getSupportActionBar().getSelectedNavigationIndex());
     }
 
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState) {
       // Restore the previously serialized current tab position.
       if (savedInstanceState.containsKey(STATE_SELECTED_NAVIGATION_ITEM)) {
-        getActionBar().setSelectedNavigationItem(savedInstanceState.getInt(STATE_SELECTED_NAVIGATION_ITEM));
+        getSupportActionBar().setSelectedNavigationItem(savedInstanceState.getInt(STATE_SELECTED_NAVIGATION_ITEM));
       }
     }
 

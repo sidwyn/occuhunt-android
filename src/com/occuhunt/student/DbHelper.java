@@ -266,7 +266,7 @@ public class DbHelper extends SQLiteOpenHelper
     private void insertCompanies(JSONArray companiesData) {
         SQLiteDatabase db = getWritableDatabase();
         
-        for (int i=0; i < companiesData.length(); i++) { // TODO: Change this to insert all companies, not just the first 30
+        for (int i=0; i < companiesData.length(); i++) {
             try {
                 JSONObject companyData = companiesData.getJSONObject(i);
                 

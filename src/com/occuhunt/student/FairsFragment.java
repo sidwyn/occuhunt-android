@@ -1,14 +1,13 @@
 package com.occuhunt.student;
 
-import android.app.ListFragment;
+import android.support.v4.app.ListFragment;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
-import static android.provider.BaseColumns._ID;
 import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
-import android.widget.SimpleCursorAdapter;
+import android.support.v4.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import com.occuhunt.student.DbContract.FairsTable;
 import java.text.SimpleDateFormat;

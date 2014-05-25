@@ -1,6 +1,5 @@
 package com.occuhunt.student;
 
-import android.app.FragmentManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -30,8 +29,8 @@ public class MainActivity extends TabActivity
     
     protected TabData[] tabDataArray() {
         return new TabData[] {
-            new TabData(R.string.title_portfolio, PortfolioFragment.class),
-            new TabData(R.string.title_fairs, FairsFragment.class)
+            new TabData(R.string.title_fairs, FairsFragment.class),
+            new TabData(R.string.title_portfolio, PortfolioFragment.class)
         };
     }
     
@@ -104,9 +103,7 @@ public class MainActivity extends TabActivity
                         sharedPref.edit().putLong(PREF_USER_ID, userId).commit();
                         
                         // Re-instantiate the Portfolio fragment
-                        FragmentManager fm = getFragmentManager();
-                        PortfolioFragment fragment = (PortfolioFragment) fm.findFragmentByTag(getString(R.string.title_portfolio));
-                        fragment.updateResume();
+                        getSupportActionBar().setSelectedNavigationItem(1);
                     } catch (JSONException e) {
                         Log.e("FetchUserTask", e.toString());
                     }

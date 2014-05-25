@@ -1,27 +1,27 @@
 package com.occuhunt.student;
 
-import android.app.Activity;
-import android.app.FragmentManager;
-import android.app.ListFragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.ListFragment;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
-import android.widget.SimpleCursorAdapter;
+import android.support.v4.widget.SimpleCursorAdapter;
 import com.occuhunt.student.DbContract.CompaniesTable;
 
 public class FairListFragment extends ListFragment {
     
     public static final String  EXTRA_FAIR_ID = "com.occuhunt.student.fair_id";
     private long mFairId;
-    private Activity mContext;
+    private FragmentActivity mContext;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        mContext = getActivity();
+        mContext = (FragmentActivity) getActivity();
         final DbHelper dbHelper = new DbHelper(mContext);
         mFairId = mContext.getIntent().getExtras().getLong(EXTRA_FAIR_ID);
         
@@ -74,7 +74,7 @@ public class FairListFragment extends ListFragment {
     
     @Override
     public void onListItemClick(ListView listview, View view, int position, long companyId) {
-        FragmentManager fm = getFragmentManager();
+        FragmentManager fm = mContext.getSupportFragmentManager();
         CompanyFragment dialog = CompanyFragment.newInstance(companyId, mFairId);
         dialog.show(fm, CompanyFragment.DIALOG_COMPANY);
     }

@@ -27,3 +27,9 @@ ACTIVITIES
 LAYOUTS
 =======
 - Attributes with "layout_" are directions to the widget's parent
+
+OTHERS
+======
+- Use sp (Scale-Independent Pixels, based on screen density and user font size preference) for fonts and dp (Density-Independent Pixels, based on screen density) for everything else
+- Adding external projects with resources: Navigate to folder, then use android update project --target <target_ID> --path . to generate build.xml
+-- Remember to add ;C:\Program Files\Android\android-sdk\tools as a Windows environment variable

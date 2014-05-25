@@ -1,7 +1,7 @@
 package com.occuhunt.student;
 
-import android.app.Fragment;
-import android.app.FragmentManager;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,8 +11,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
-import android.widget.GridLayout;
-import android.widget.SimpleCursorAdapter;
+import android.support.v7.widget.GridLayout;
+import android.support.v4.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 import org.json.JSONArray;
@@ -86,7 +86,7 @@ public class FairMapFragment extends Fragment {
         View.OnClickListener listener = new View.OnClickListener() {
             public void onClick(View companyTile) {
                 long companyId = Long.valueOf((String) companyTile.getTag());
-                FragmentManager fm = getFragmentManager();
+                FragmentManager fm = getActivity().getSupportFragmentManager();
                 CompanyFragment dialog = CompanyFragment.newInstance(companyId, mFairId);
                 dialog.show(fm, CompanyFragment.DIALOG_COMPANY);
             }
