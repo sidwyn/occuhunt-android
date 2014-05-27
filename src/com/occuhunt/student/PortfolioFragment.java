@@ -1,7 +1,5 @@
 package com.occuhunt.student;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.support.v4.app.Fragment;
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
@@ -69,7 +67,6 @@ public class PortfolioFragment extends Fragment {
             }
             else {
                 showResume(resumePath);
-                sharedPref.edit().putString(PREF_RESUME_PATH, null).commit();
             }
         }
         

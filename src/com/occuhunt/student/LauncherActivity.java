@@ -1,5 +1,7 @@
 package com.occuhunt.student;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -44,6 +46,13 @@ public class LauncherActivity extends ActionBarActivity {
                     Log.e("updateFairs()", e.toString());
                 }
                 return null;
+            }
+            
+            @Override
+            protected void onPostExecute(Void v) {
+                Intent intent = new Intent(LauncherActivity.this, MainActivity.class);
+                startActivity(intent);
+                finish();
             }
         }.execute(Constants.API_URL + "/fairs/");
     }

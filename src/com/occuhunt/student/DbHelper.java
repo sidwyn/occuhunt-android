@@ -10,6 +10,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import static android.provider.BaseColumns._ID;
 import android.util.Log;
 import android.widget.TextView;
@@ -215,15 +216,12 @@ public class DbHelper extends SQLiteOpenHelper
     }
     
     protected void insertFairs(JSONArray fairsData) {
-        assert "LauncherActivity".equals(mContext.getClass().getSimpleName()) :
-                "insertFairs() is not being called from LauncherActivity";
         final SQLiteDatabase db = getWritableDatabase();
         
         for (int i = 0; i < fairsData.length(); i++) {
             try {
                 final JSONObject fairData = fairsData.getJSONObject(i);
                 final String imageUrl = fairData.getString(FairsTable.COLUMN_NAME_LOGO);
-                final boolean isLastFair = (i + 1 == fairsData.length());
                 
                 // TODO: Optimize DownloadFileTask() to download all images at one go
                 new DownloadFileTask(mContext) {
@@ -244,18 +242,13 @@ public class DbHelper extends SQLiteOpenHelper
 
                                 insertRooms(fairData.getJSONArray("rooms"), fairId, db);
                             }
-                            
-                            if (isLastFair) {
-                                Intent intent = new Intent(mContext, MainActivity.class);
-                                mContext.startActivity(intent);
-                            }
                         } catch (JSONException e) {
                             Log.e("insertFairs()", e.toString());
                         }
                     }
-                }.execute(imageUrl);
+                }.execute(imageUrl).get();
                 
-            } catch (JSONException e) {
+            } catch (Exception e) {
                 // Meh.
             }
         }
