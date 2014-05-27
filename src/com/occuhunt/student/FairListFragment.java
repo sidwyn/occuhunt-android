@@ -5,7 +5,6 @@ import android.support.v4.app.ListFragment;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 import android.support.v4.widget.SimpleCursorAdapter;
@@ -27,33 +26,12 @@ public class FairListFragment extends ListFragment {
         
         Cursor companiesCursor = dbHelper.queryCompanies(mFairId);
         if (companiesCursor.getCount() == 0) { // Company data not downloaded for this fair yet
-            Cursor roomsCursor = dbHelper.queryRooms(mFairId);
-            int roomIdColumn = roomsCursor.getColumnIndex(DbContract.RoomsTable._ID);
-            
-            // TODO: Optimize this loop!
-            while (roomsCursor.moveToNext()) {
-                final long roomId = roomsCursor.getLong(roomIdColumn);
-                final boolean isLastRoom = roomsCursor.isLast();
-                
-                new FetchJSONTask(mContext) {
-                    @Override
-                    protected void onPostExecute(String jsonString) {
-                        super.onPostExecute(jsonString);
-                        try {
-                            dbHelper.insertCompaniesAtFair(getJSON().getJSONArray("coys"), mFairId, roomId);
-                        } catch (Exception e) {
-                            Log.e("queryCompanies()", e.toString());
-                            return;
-                        }
-                        
-                        // Company data should have been inserted, let's try again
-                        if (isLastRoom) {
-                            showCompaniesList(dbHelper.queryCompanies(mFairId));
-                        }
-                    }
-                }.execute("http://occuhunt.com/static/faircoords/" + mFairId + "_" + roomId + ".json");
-                
-            }
+            dbHelper.fetchCompanies(mFairId, new Runnable() {
+                @Override
+                public void run() {
+                    showCompaniesList(dbHelper.queryCompanies(mFairId));
+                }
+            });
         }
         else {
             showCompaniesList(companiesCursor);

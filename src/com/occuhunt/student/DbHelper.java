@@ -1,7 +1,9 @@
 package com.occuhunt.student;
 
+import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.database.sqlite.SQLiteDatabase;
@@ -10,10 +12,12 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import static android.provider.BaseColumns._ID;
 import android.util.Log;
+import android.widget.TextView;
 import com.occuhunt.student.DbContract.*;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class DbHelper extends SQLiteOpenHelper
@@ -150,6 +154,35 @@ public class DbHelper extends SQLiteOpenHelper
         );
     }
     
+    public void fetchCompanies(final long fairId, final Runnable r) {
+        Cursor roomsCursor = queryRooms(fairId);
+        int roomIdColumn = roomsCursor.getColumnIndex(DbContract.RoomsTable._ID);
+
+        // TODO: Optimize this loop!
+        while (roomsCursor.moveToNext()) {
+            final long roomId = roomsCursor.getLong(roomIdColumn);
+            final boolean isLastRoom = roomsCursor.isLast();
+
+            new FetchJSONTask(mContext) {
+                @Override
+                protected void onPostExecute(Void v) {
+                    super.onPostExecute(v);
+                    try {
+                        insertCompaniesAtFair(getJSON().getJSONArray("coys"), fairId, roomId);
+                    } catch (Exception e) {
+                        Log.e("queryCompanies()", e.toString());
+                        return;
+                    }
+
+                    // Company data should have been inserted, let's try again
+                    if (isLastRoom) {
+                        r.run();
+                    }
+                }
+            }.execute("http://occuhunt.com/static/faircoords/" + fairId + "_" + roomId + ".json");
+        }
+    }
+    
     /* Currently unused! */
     public class FairsCursor extends CursorWrapper
     {
@@ -182,29 +215,47 @@ public class DbHelper extends SQLiteOpenHelper
     }
     
     protected void insertFairs(JSONArray fairsData) {
-        SQLiteDatabase db = getWritableDatabase();
+        assert "LauncherActivity".equals(mContext.getClass().getSimpleName()) :
+                "insertFairs() is not being called from LauncherActivity";
+        final SQLiteDatabase db = getWritableDatabase();
         
-        for (int i=0; i < fairsData.length(); i++) {
+        for (int i = 0; i < fairsData.length(); i++) {
             try {
-                JSONObject fairData = fairsData.getJSONObject(i);
+                final JSONObject fairData = fairsData.getJSONObject(i);
+                final String imageUrl = fairData.getString(FairsTable.COLUMN_NAME_LOGO);
+                final boolean isLastFair = (i + 1 == fairsData.length());
                 
                 // TODO: Optimize DownloadFileTask() to download all images at one go
-                String logoPath = new DownloadFileTask(mContext).execute(fairData.getString(FairsTable.COLUMN_NAME_LOGO)).get();
-                long fairId = fairData.getLong(DbContract.REMOTE_ID_COLUMN);
-                
-                if (queryFair(fairId).getCount() == 0) {
-                    ContentValues fairEntry = new ContentValues();
-                    fairEntry.put(_ID, fairId);
-                    fairEntry.put(FairsTable.COLUMN_NAME_FAIR_NAME, fairData.getString(FairsTable.COLUMN_NAME_FAIR_NAME));
-                    fairEntry.put(FairsTable.COLUMN_NAME_LOGO, logoPath);
-                    fairEntry.put(FairsTable.COLUMN_NAME_VENUE, fairData.getString(FairsTable.COLUMN_NAME_VENUE));
-                    fairEntry.put(FairsTable.COLUMN_NAME_TIME_START, fairData.getString(FairsTable.COLUMN_NAME_TIME_START));
-                    fairEntry.put(FairsTable.COLUMN_NAME_TIME_END, fairData.getString(FairsTable.COLUMN_NAME_TIME_END));
-                    db.insert(FairsTable.TABLE_NAME, null, fairEntry);
+                new DownloadFileTask(mContext) {
+                    @Override
+                    protected void onPostExecute(String savePath) {
+                        try {
+                            long fairId = fairData.getLong(DbContract.REMOTE_ID_COLUMN);
 
-                    insertRooms(fairData.getJSONArray("rooms"), fairId, db);
-                }
-            } catch (Exception e) {
+                            if (queryFair(fairId).getCount() == 0) {
+                                ContentValues fairEntry = new ContentValues();
+                                fairEntry.put(_ID, fairId);
+                                fairEntry.put(FairsTable.COLUMN_NAME_FAIR_NAME, fairData.getString(FairsTable.COLUMN_NAME_FAIR_NAME));
+                                fairEntry.put(FairsTable.COLUMN_NAME_LOGO, savePath);
+                                fairEntry.put(FairsTable.COLUMN_NAME_VENUE, fairData.getString(FairsTable.COLUMN_NAME_VENUE));
+                                fairEntry.put(FairsTable.COLUMN_NAME_TIME_START, fairData.getString(FairsTable.COLUMN_NAME_TIME_START));
+                                fairEntry.put(FairsTable.COLUMN_NAME_TIME_END, fairData.getString(FairsTable.COLUMN_NAME_TIME_END));
+                                db.insert(FairsTable.TABLE_NAME, null, fairEntry);
+
+                                insertRooms(fairData.getJSONArray("rooms"), fairId, db);
+                            }
+                            
+                            if (isLastFair) {
+                                Intent intent = new Intent(mContext, MainActivity.class);
+                                mContext.startActivity(intent);
+                            }
+                        } catch (JSONException e) {
+                            Log.e("insertFairs()", e.toString());
+                        }
+                    }
+                }.execute(imageUrl);
+                
+            } catch (JSONException e) {
                 // Meh.
             }
         }
@@ -249,11 +300,16 @@ public class DbHelper extends SQLiteOpenHelper
     }
     
     public void fetchCompanies() {
-        new FetchJSONTask(mContext) {
+        new FetchJSONTask(mContext, false) {
             @Override
-            protected void onPostExecute(String jsonString) {
+            protected void onPostExecute(Void v) {
+                assert "LauncherActivity".equals(mContext.getClass().getSimpleName()) :
+                        "fetchCompanies() is not being called from LauncherActivity";
+                TextView launchStatus = (TextView) ((Activity) mContext).findViewById(R.id.launcher_status);
+                launchStatus.setText("Initializing list of companies...");
+
                 try {
-                    super.onPostExecute(jsonString);
+                    super.onPostExecute(v);
                     JSONArray companiesData = getJSON().getJSONObject("response").getJSONArray("companies");
                     insertCompanies(companiesData);
                 } catch (Exception e) {
@@ -285,18 +341,10 @@ public class DbHelper extends SQLiteOpenHelper
     // -------------------------------------------------------------------------
     
     public boolean isNetAvailable() {
-        try {
-            ConnectivityManager connectivityManager = (ConnectivityManager)
-                    mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-            NetworkInfo mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
-            if (wifiInfo.isConnected() || mobileInfo.isConnected()) {
-                return true;
-            }
-        }
-        catch (Exception e) {
-           e.printStackTrace();
-        }
-        return false;
+        ConnectivityManager connectivityManager = (ConnectivityManager)
+                mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        NetworkInfo mobileInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+        return wifiInfo.isConnected() || mobileInfo.isConnected();
     }
 }

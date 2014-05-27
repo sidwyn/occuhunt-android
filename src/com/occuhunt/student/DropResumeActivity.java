@@ -47,60 +47,40 @@ public class DropResumeActivity extends ListActivity {
     
     private void showCompanies() {
         Cursor companiesCursor = mDbHelper.queryCompanies(mFairId);
-        
+
         if (companiesCursor.getCount() == 0) { // Company data not downloaded for this fair yet
-            Cursor roomsCursor = mDbHelper.queryRooms(mFairId);
-            int roomIdColumn = roomsCursor.getColumnIndex(DbContract.RoomsTable._ID);
-            
-            // TODO: Optimize this loop!
-            while (roomsCursor.moveToNext()) {
-                final long roomId = roomsCursor.getLong(roomIdColumn);
-                final boolean isLastRoom = roomsCursor.isLast();
-                
-                new FetchJSONTask(DropResumeActivity.this) {
-                    @Override
-                    protected void onPostExecute(String jsonString) {
-                        super.onPostExecute(jsonString);
-                        try {
-                            mDbHelper.insertCompaniesAtFair(getJSON().getJSONArray("coys"), mFairId, roomId);
-                        } catch (Exception e) {
-                            Toast.makeText(mContext, R.string.no_upcoming_fairs, Toast.LENGTH_SHORT).show();
-                            finish();
-                            return;
-                        }
-                        
-                        // Company data should have been inserted, let's try again
-                        if (isLastRoom) {
-                            showCompanies();
-                        }
-                    }
-                }.execute("http://occuhunt.com/static/faircoords/" + mFairId + "_" + roomId + ".json");
-                
-            }
+            mDbHelper.fetchCompanies(mFairId, new Runnable() {
+                @Override
+                public void run() {
+                    showCompaniesList(mDbHelper.queryCompanies(mFairId));
+                }
+            });
         }
         else { // Company list found, show it
-            SimpleCursorAdapter adapter = new SimpleCursorAdapter(
-                    this,
-                    R.layout.company_entry,
-                    companiesCursor,
-                    new String[] { DbContract.CompaniesTable.COLUMN_NAME_COMPANY_NAME },
-                    new int[] { R.id.company_textview },
-                    0) {
-
-                @Override
-                public View getView(int position, View oldView, ViewGroup parent) {
-                    View newView = super.getView(position, oldView, parent);
-
-                    CheckBox cb = (CheckBox) newView.findViewById(R.id.company_checkbox);
-                    boolean isChecked = mCheckedIds.contains(getItemId(position));
-                    cb.setChecked(isChecked);
-
-                    return newView;
-                }
-
-            };
-            setListAdapter(adapter);
+            showCompaniesList(companiesCursor);
         }
+    }
+    
+    private void showCompaniesList(Cursor companiesCursor) {
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(
+                this,
+                R.layout.company_entry,
+                companiesCursor,
+                new String[] { DbContract.CompaniesTable.COLUMN_NAME_COMPANY_NAME },
+                new int[] { R.id.company_textview },
+                0) {
+            @Override
+            public View getView(int position, View oldView, ViewGroup parent) {
+                View newView = super.getView(position, oldView, parent);
+
+                CheckBox cb = (CheckBox) newView.findViewById(R.id.company_checkbox);
+                boolean isChecked = mCheckedIds.contains(getItemId(position));
+                cb.setChecked(isChecked);
+
+                return newView;
+            }
+        };
+        setListAdapter(adapter);
     }
     
     @Override

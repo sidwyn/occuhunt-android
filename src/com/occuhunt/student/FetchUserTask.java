@@ -13,15 +13,15 @@ public class FetchUserTask extends FetchJSONTask {
     }
     
     @Override
-    protected String doInBackground(String... linkedinId) {
+    protected Void doInBackground(String... linkedinId) {
         String[] url = new String[1];
         url[0] = Constants.API_URL + "/users/?linkedin_uid=" + linkedinId[0];
         return super.doInBackground(url);
     }
     
     @Override
-    protected void onPostExecute(String jsonString) {
-        super.onPostExecute(jsonString);
+    protected void onPostExecute(Void v) {
+        super.onPostExecute(v);
         try {
             mUser = getJSON().getJSONObject("response").getJSONArray("users").getJSONObject(0);
         } catch (Exception e) {

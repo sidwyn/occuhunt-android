@@ -63,8 +63,8 @@ public class FairMapFragment extends Fragment {
         
         new FetchJSONTask(getActivity()) {
             @Override
-            protected void onPostExecute(String jsonString) {
-                super.onPostExecute(jsonString);
+            protected void onPostExecute(Void v) {
+                super.onPostExecute(v);
                 try {
                     updateLayout(getJSON());
                 } catch (JSONNotFoundException e) {

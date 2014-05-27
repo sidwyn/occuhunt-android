@@ -18,18 +18,26 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class FetchJSONTask extends AsyncTask<String, Void, String> {
+public class FetchJSONTask extends AsyncTask<String, Void, Void> {
     
     private String mJSONUrl;
+    private String mJSONString;
     private JSONObject mJSONResult;
     protected final Context mContext;
     private final ProgressDialog mDialog;
+    private boolean mShowDialog;
     
     public FetchJSONTask(Context context) {
         mContext = context;
         mDialog = new ProgressDialog(context);
         mDialog.setMessage("Loading...");
         mDialog.setCancelable(false);
+        mShowDialog = true;
+    }
+    
+    public FetchJSONTask(Context context, boolean showProgressDialog) {
+        this(context);
+        mShowDialog = showProgressDialog;
     }
     
     @Override
@@ -37,13 +45,13 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
         if ( ! new DbHelper(mContext).isNetAvailable()) {
             Toast.makeText(mContext, R.string.no_internet_error_msg, Toast.LENGTH_SHORT).show();
         }
-        else if (mContext instanceof LauncherActivity == false) {
+        else if (mShowDialog) {
             mDialog.show();
         }
     }
     
     @Override
-    protected String doInBackground(String... url) {
+    protected Void doInBackground(String... url) {
         HttpClient httpclient = new DefaultHttpClient(); // for port 80 requests!
         HttpGet httpget = new HttpGet(url[0]);
         InputStream is;
@@ -70,25 +78,27 @@ public class FetchJSONTask extends AsyncTask<String, Void, String> {
                 sb.append(line + "\n");
             }
             is.close();
-            return sb.toString();           
+            mJSONString = sb.toString();           
         } catch (IOException e) {
             Log.e("FetchJSONTask", e.toString());
             return null;
         }
-    }
         
-    @Override
-    protected void onPostExecute(String jsonString) {
-        mDialog.dismiss();
-        
-        if (jsonString != null) {
+        if (mJSONString != null) {
             // Toast.makeText(mContext, R.string.download_error_msg, Toast.LENGTH_SHORT).show();
             try {
-                mJSONResult = new JSONObject(jsonString);
+                mJSONResult = new JSONObject(mJSONString);
             } catch (JSONException e) {
                 Log.e("FetchJSONTask", e.toString() + " on URL: " + mJSONUrl);
             }
         }
+        
+        return null;
+    }
+        
+    @Override
+    protected void onPostExecute(Void v) {
+        mDialog.dismiss();
     }
     
     protected JSONObject getJSON() throws JSONNotFoundException {

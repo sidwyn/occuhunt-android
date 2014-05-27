@@ -5,6 +5,7 @@
     android:layout_height="fill_parent"
     android:padding="10dp"
     android:gravity="center"
+    android:animateLayoutChanges="true"
 >
 <Button
     android:layout_width="wrap_content"
@@ -20,14 +21,28 @@
     android:onClick="linkedinLogin"
     android:layout_marginTop="80dp"
 />
-<ImageView
-    android:id="@+id/resume_imageview"
+<FrameLayout
+    android:id="@+id/resume_frame"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:visibility="gone"
     android:layout_marginTop="10dp"
-    android:scaleType="centerCrop"
-    android:contentDescription="@string/image_resume"
-/>
+>
+    <ImageView
+        android:id="@+id/resume_imageview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:visibility="gone"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/image_resume"
+    />
+    <ProgressBar
+        android:id="@+id/resume_progressbar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="visible"
+    />
+</FrameLayout>
 </LinearLayout>
 

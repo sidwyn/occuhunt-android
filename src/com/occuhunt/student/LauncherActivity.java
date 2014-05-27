@@ -1,11 +1,12 @@
 package com.occuhunt.student;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 import org.json.JSONArray;
+import org.json.JSONException;
 
 public class LauncherActivity extends ActionBarActivity {
 
@@ -29,19 +30,20 @@ public class LauncherActivity extends ActionBarActivity {
     }
     
     protected void updateFairs() {
-        new FetchJSONTask(this) {
+        TextView launchStatus = (TextView) findViewById(R.id.launcher_status);
+        launchStatus.setText("Updating fairs...");
+        
+        new FetchJSONTask(this, false) {
             @Override
-            protected void onPostExecute(String jsonString) {
-                super.onPostExecute(jsonString);
+            protected Void doInBackground(String... url) {
+                super.doInBackground(url);
                 try {
                     JSONArray fairsData = getJSON().getJSONArray("objects");
                     mDbHelper.insertFairs(fairsData);
-                    
-                    Intent intent = new Intent(LauncherActivity.this, MainActivity.class);
-                    startActivity(intent);
-                } catch (Exception e) {
+                } catch (JSONException e) {
                     Log.e("updateFairs()", e.toString());
                 }
+                return null;
             }
         }.execute(Constants.API_URL + "/fairs/");
     }

@@ -96,8 +96,8 @@ public class MainActivity extends TabActivity
             
             new FetchUserTask(MainActivity.this) {
                 @Override
-                protected void onPostExecute(String jsonString) {
-                    super.onPostExecute(jsonString);
+                protected void onPostExecute(Void v) {
+                    super.onPostExecute(v);
                     try {
                         long userId = getUser().getLong("id");
                         sharedPref.edit().putLong(PREF_USER_ID, userId).commit();

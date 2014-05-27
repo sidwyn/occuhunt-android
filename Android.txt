@@ -27,9 +27,12 @@ ACTIVITIES
 LAYOUTS
 =======
 - Attributes with "layout_" are directions to the widget's parent
+-- E.g. layout_gravity positions a widget relative to its parent, while gravity positions the widget's own content
+- 
 
 OTHERS
 ======
 - Use sp (Scale-Independent Pixels, based on screen density and user font size preference) for fonts and dp (Density-Independent Pixels, based on screen density) for everything else
 - Adding external projects with resources: Navigate to folder, then use android update project --target <target_ID> --path . to generate build.xml
 -- Remember to add ;C:\Program Files\Android\android-sdk\tools as a Windows environment variable
+- Use AsyncTask only for short operations. Explanation: http://stackoverflow.com/a/13082084
